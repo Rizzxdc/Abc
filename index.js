@@ -35,9 +35,9 @@ global.fetchJson = async (url, options = {}) => {
 };
 
 const settings = {
-  name: "Skyzopedia Api's",
-  description: "Skyzopedia Api is a simple and lightweight REST API built with Express.js",
-  apiSettings: { creator: "Skyzopedia", apikey: ["key1", "key2", "123"] },
+  name: "Always Rizz Api's",
+  description: "AlwaysRizz Api is a simple and lightweight REST API built with Express.js",
+  apiSettings: { creator: "AlwaysRizz", apikey: ["Rizz"] },
   linkWhatsapp: "https://whatsapp.com/channel/0029Vb7HGkP7j6g5lLi0JY0f",
   linkYoutube: "https://www.youtube.com/@skyzopedia-0xf"
 };
