@@ -16,7 +16,7 @@ async function stalkInstagram(username) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
         'Accept': 'application/json'
       },
-      validateStatus: () => true // biar bisa handle status non-200 secara manual
+      validateStatus: () => true // Biar bisa handle status HTTP non-200 secara manual
     });
   } catch (err) {
     // Error jaringan (timeout, DNS, koneksi putus, dll)
@@ -25,7 +25,7 @@ async function stalkInstagram(username) {
 
   const data = response.data;
 
-  // Kalau upstream balikin HTML / bukan JSON (biasanya tanda down / cloudflare block)
+  // Jika upstream mengembalikan HTML / bukan JSON (tanda down / cloudflare block)
   if (!data || typeof data !== 'object') {
     throw new Error('Respon dari server tidak valid (bukan JSON). Server mungkin sedang down.');
   }
@@ -47,7 +47,7 @@ async function stalkInstagram(username) {
     profilePic: r.profile_pic,
     isPrivate: r.is_private,
     isVerified: r.is_verified,
-    externalUrl: r.external_url,
+    externalUrl: r.external_url ?? null,
     stats: {
       followers: r.stats?.followers ?? 0,
       following: r.stats?.following ?? 0,
