@@ -1,30 +1,44 @@
-module.exports = {
-  name: "Bratvid", 
-  desc: "Brat video generator", 
-  category: "Imagecreator", 
-  path: "/imagecreator/bratvid?apikey=&text=",
+import fetch from 'node-fetch';
 
-  async run(req, res) {
-    try {
-      const { apikey, text } = req.query;
-      if (!apikey || !global.apikey.includes(apikey)) {
-        return res.json({ status: false, error: 'Apikey invalid' });
-      }
-
-      if (!text) {
-        return res.json({ status: false, error: 'Text parameter is required' });
-      }
-
-      const buffer = await getBuffer(`https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(text)}&isAnimated=true&delay=500`);
-
-      res.writeHead(200, {
-        'Content-Type': 'image/gif',
-        'Content-Length': buffer.length,
-      });
-      res.end(buffer);
-      
-    } catch (error) {
-      res.status(500).send(`Error: ${error.message}`);
-    }
+/**
+ * Menggenerasi video Brat (GIF/MP4) menggunakan KaelStore API
+ * @param {string} text - Teks yang akan dijadikan video brat
+ * @param {string} [apiKey='KAEL_5791597'] - API Key KaelStore
+ * @returns {Promise<Buffer>} Buffer video/GIF hasil generate
+ */
+export async function createBratVideo(text, apiKey = 'KAEL_5791597') {
+  if (!text) {
+    throw new Error('Parameter "text" wajib diisi.');
   }
-};
+
+  const url = `https://api.kaelstore.xyz/api/imagecreator/bratvid?text=${encodeURIComponent(text)}&apikey=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    // Mengambil response dalam bentuk Buffer (media/video)
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    console.error('Error generating Brat Video:', error.message);
+    throw error;
+  }
+}
+
+// Contoh Penggunaan (Uncomment jika ingin mengetes langsung):
+/*
+(async () => {
+  import fs from 'fs';
+  try {
+    const videoBuffer = await createBratVideo('Hufttt');
+    fs.writeFileSync('bratvid.mp4', videoBuffer);
+    console.log('Video brat berhasil dibuat dan disimpan sebagai bratvid.mp4');
+  } catch (err) {
+    console.error('Gagal:', err);
+  }
+})();
+*/
