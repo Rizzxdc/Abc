@@ -1,148 +1,83 @@
 const express = require('express');
-const chalk = require('chalk');
-const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
-const axios = require('axios');
-const multer = require('multer');
 
 const app = express();
-const PORT = process.env.PORT || 8000;
-
-const upload = multer();
-
-app.enable("trust proxy");
-app.set("json spaces", 2);
-
-app.use(express.static(path.join(__dirname, 'src')));
-app.use(express.json());
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(cors());
+app.use(express.json());
 
-global.getBuffer = async (url, options = {}) => {
-  try {
-    const res = await axios({ method: 'get', url, headers: { 'DNT': 1, 'Upgrade-Insecure-Request': 1 }, ...options, responseType: 'arraybuffer' });
-    return res.data;
-  } catch (err) { return err; }
-};
+// Mengimpor seluruh endpoint API
+const routes = [
+  ...require('./api/ai-gemini.js'),
+  ...require('./api/ai-gpt.js'),
+  ...require('./api/ai-groq.js'),
+  ...require('./api/ai-image.js'),
+  ...require('./api/ai-nolimit.js'),
+  ...require('./api/bokep.js'),
+  ...require('./api/brat.js'),
+  ...require('./api/bratvid.js'),
+  ...require('./api/bstation.js'),
+  ...require('./api/bstationDl.js'),
+  ...require('./api/cekewallet.js'),
+  ...require('./api/emojimix.js'),
+  ...require('./api/emojitogif.js'),
+  ...require('./api/facebook.js'),
+  ...require('./api/gimage.js'),
+  ...require('./api/gitclone.js'),
+  ...require('./api/heroml.js'),
+  ...require('./api/instagram.js'),
+  ...require('./api/mediafire.js'),
+  ...require('./api/nekopoi.js'),
+  ...require('./api/orderkuota.js'),
+  ...require('./api/otakudesu.js'),
+  ...require('./api/pin2.js'),
+  ...require('./api/pindl.js'),
+  ...require('./api/pinterest.js'),
+  ...require('./api/random-nsfw.js'),
+  ...require('./api/random-waifu.js'),
+  ...require('./api/reactch.js'),
+  ...require('./api/removebg.js'),
+  ...require('./api/sfiledl.js'),
+  ...require('./api/sfilesearch.js'),
+  ...require('./api/SoundCloud.js'),
+  ...require('./api/Spotify.js'),
+  ...require('./api/spotify2.js'),
+  ...require('./api/tiktok-search.js'),
+  ...require('./api/tiktok.js'),
+  ...require('./api/toanime.js'),
+  ...require('./api/tobugil.js'),
+  ...require('./api/toghibli.js'),
+  ...require('./api/tohitam.js'),
+  ...require('./api/tozombie.js'),
+  ...require('./api/twitter.js'),
+  ...require('./api/upscale.js'),
+  ...require('./api/xnxxdl.js'),
+  ...require('./api/youtube.js'),
+  ...require('./api/ytdl.js'),
+  ...require('./api/github.js') // <-- BERKAS STALK GITHUB DIDAFTARKAN DI SINI
+];
 
-global.fetchJson = async (url, options = {}) => {
-  try {
-    const res = await axios({ method: 'GET', url, headers: { 'User-Agent': 'Mozilla/5.0' }, ...options });
-    return res.data;
-  } catch (err) { return err; }
-};
-
-const settings = {
-  name: "Always Rizz Api's",
-  description: "AlwaysRizz Api is a simple and lightweight REST API built with Express.js",
-  apiSettings: { creator: "AlwaysRizz", apikey: ["Rizz"] },
-  linkWhatsapp: "https://whatsapp.com/channel/0029Vb7HGkP7j6g5lLi0JY0f",
-  linkYoutube: "https://www.youtube.com/@skyzopedia-0xf"
-};
-
-global.apikey = settings.apiSettings.apikey;
-
-app.use((req, res, next) => {
-  const originalJson = res.json;
-  res.json = function (data) {
-    if (data && typeof data === 'object') {
-      const responseData = { status: data.status, creator: settings.apiSettings.creator || "Created Using Skyzopedia", ...data };
-      return originalJson.call(this, responseData);
-    }
-    return originalJson.call(this, data);
-  };
-  next();
+// Register routes
+routes.forEach(route => {
+  app.get(route.path, route.run);
 });
 
-let totalRoutes = 0;
-let rawEndpoints = {};
-
-const apiFolder = path.join(__dirname, './api');
-
-const register = (ep, file) => {
-  if (ep && ep.name && ep.desc && ep.category && ep.path && typeof ep.run === "function") {
-    const cleanPath = ep.path.split("?")[0];
-    const method = ep.method ? ep.method.toLowerCase() : 'get';
-    
-    if (method === 'post') {
-      app.post(cleanPath, upload.any(), (req, res, next) => {
-        console.log(`POST ${cleanPath} - Body:`, req.body);
-        console.log(`POST ${cleanPath} - Files:`, req.files);
-        ep.run(req, res, next);
-      });
-    } else {
-      app.get(cleanPath, (req, res, next) => {
-        console.log(`GET ${cleanPath} - Query:`, req.query);
-        ep.run(req, res, next);
-      });
-    }
-
-    if (!rawEndpoints[ep.category]) rawEndpoints[ep.category] = [];
-    
-    const endpointData = {
-      name: ep.name,
-      desc: ep.desc,
-      path: ep.path,
-      method: ep.method || 'GET',
-      ...(ep.innerDesc ? { innerDesc: ep.innerDesc } : {}),
-      ...(ep.body ? { body: ep.body } : {})
-    };
-    
-    rawEndpoints[ep.category].push(endpointData);
-    totalRoutes++;
-    console.log(chalk.bgHex('#FFFF99').hex('#333').bold(` Loaded Route: ${file} → ${ep.name} (${method.toUpperCase()}) `));
-  }
-};
-
-fs.readdirSync(apiFolder).forEach((file) => {
-  const filePath = path.join(apiFolder, file);
-  if (path.extname(file) === '.js') {
-    try {
-      delete require.cache[require.resolve(filePath)];
-      const routeModule = require(filePath);
-      if (Array.isArray(routeModule)) {
-        routeModule.forEach(ep => register(ep, file));
-      } else if (routeModule.endpoint) {
-        register(routeModule.endpoint, file);
-      } else if (typeof routeModule === "function") {
-        routeModule(app);
-      } else {
-        register(routeModule, file);
-      }
-    } catch (err) {
-      console.error(chalk.red(`Error loading ${file}:`), err.message);
-    }
-  }
-});
-
-console.log(chalk.bgHex('#90EE90').hex('#333').bold(' Load Complete! ✓ '));
-console.log(chalk.bgHex('#90EE90').hex('#333').bold(` Total Routes Loaded: ${totalRoutes} `));
-
-app.get('/settings', (req, res) => {
-  const endpoints = {
-    categories: Object.keys(rawEndpoints)
-      .sort((a, b) => a.localeCompare(b))
-      .map(category => ({
-        name: category,
-        items: rawEndpoints[category].sort((a, b) => a.name.localeCompare(b.name))
-      }))
-  };
-  settings.categories = endpoints.categories;
-  res.json(settings);
-});
-
+// Serve frontend docs & home
 app.get('/docs', (req, res) => {
-  res.sendFile(path.join(__dirname, 'src/docs.html'));
+  res.sendFile(path.join(__dirname, 'src', 'docs.html'));
+});
+
+app.get('/api/endpoints', (req, res) => {
+  res.json(routes);
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'src/home.html'));
+  res.sendFile(path.join(__dirname, 'src', 'home.html'));
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(chalk.bgHex('#90EE90').hex('#333').bold(` Server is running on port ${PORT} `));
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;
