@@ -5,6 +5,7 @@ const axios = require('axios');
  * Source: https://api.azbry.com/api/stalk/github?username=
  * @param {string} username
  */
+
 async function stalkGithub(username) {
   const apiUrl = `https://api.azbry.com/api/stalk/github?username=${encodeURIComponent(username)}`;
 
