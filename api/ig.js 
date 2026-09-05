@@ -1,0 +1,65 @@
+const axios = require('axios');
+
+/**
+ * Fungsi untuk stalk profile Instagram
+ * @param {string} username - Username Instagram yang ingin distalk
+ */
+async function stalkInstagram(username) {
+    if (!username) {
+        throw new Error('Username tidak boleh kosong!');
+    }
+
+    try {
+        const response = await axios.get(`https://api.azbry.com/api/stalk/instagram`, {
+            params: { username },
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            },
+            timeout: 10000 // Timeout 10 detik
+        });
+
+        const data = response.data;
+
+        // Validasi response dari API
+        if (data && data.status && data.result) {
+            return {
+                status: true,
+                creator: data.creator,
+                data: {
+                    username: data.result.username,
+                    fullName: data.result.full_name,
+                    bio: data.result.bio,
+                    profilePic: data.result.profile_pic,
+                    isPrivate: data.result.is_private,
+                    isVerified: data.result.is_verified,
+                    externalUrl: data.result.external_url,
+                    stats: {
+                        followers: data.result.stats.followers,
+                        following: data.result.stats.following,
+                        posts: data.result.stats.posts
+                    }
+                }
+            };
+        } else {
+            return {
+                status: false,
+                message: 'Gagal mengambil data atau username tidak ditemukan.'
+            };
+        }
+
+    } catch (error) {
+        return {
+            status: false,
+            message: error.response?.data?.message || error.message || 'Terjadi kesalahan pada server.'
+        };
+    }
+}
+
+// --- CONTOH PENGGUNAAN ---
+(async () => {
+    const usernameTarget = 'Cutiepieck';
+    console.log(`Mengambil data untuk username: ${usernameTarget}...`);
+    
+    const result = await stalkInstagram(usernameTarget);
+    console.log(JSON.stringify(result, null, 2));
+})();
