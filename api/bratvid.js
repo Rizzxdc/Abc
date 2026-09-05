@@ -1,44 +1,69 @@
-import fetch from 'node-fetch';
+const axios = require('axios');
 
 /**
- * Menggenerasi video Brat (GIF/MP4) menggunakan KaelStore API
- * @param {string} text - Teks yang akan dijadikan video brat
- * @param {string} [apiKey='KAEL_5791597'] - API Key KaelStore
- * @returns {Promise<Buffer>} Buffer video/GIF hasil generate
+ * Membuat video gaya Brat berdasarkan teks
+ * Source: https://api.kaelstore.xyz/api/imagecreator/bratvid?text=&apikey=
+ * @param {string} text
  */
-export async function createBratVideo(text, apiKey = 'KAEL_5791597') {
-  if (!text) {
-    throw new Error('Parameter "text" wajib diisi.');
-  }
-
-  const url = `https://api.kaelstore.xyz/api/imagecreator/bratvid?text=${encodeURIComponent(text)}&apikey=${apiKey}`;
+async function makeBratVid(text) {
+  const apiKey = 'KAEL_5791597';
+  const apiUrl = `https://api.kaelstore.xyz/api/imagecreator/bratvid?text=${encodeURIComponent(text)}&apikey=${apiKey}`;
 
   try {
-    const response = await fetch(url);
+    const response = await axios.get(apiUrl, {
+      responseType: 'arraybuffer', // Mengambil data video/gif dalam bentuk Buffer
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+      },
+      validateStatus: () => true
+    });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    if (response.status !== 200) {
+      throw new Error(`Server merespon dengan status ${response.status}`);
     }
 
-    // Mengambil response dalam bentuk Buffer (media/video)
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch (error) {
-    console.error('Error generating Brat Video:', error.message);
-    throw error;
+    return response.data; // Mengembalikan buffer video
+  } catch (err) {
+    throw new Error(`Gagal membuat video Brat: ${err.message}`);
   }
 }
 
-// Contoh Penggunaan (Uncomment jika ingin mengetes langsung):
-/*
-(async () => {
-  import fs from 'fs';
-  try {
-    const videoBuffer = await createBratVideo('Hufttt');
-    fs.writeFileSync('bratvid.mp4', videoBuffer);
-    console.log('Video brat berhasil dibuat dan disimpan sebagai bratvid.mp4');
-  } catch (err) {
-    console.error('Gagal:', err);
+module.exports = [
+  {
+    name: "Brat Video Generator",
+    desc: "Generate video gaya Brat dari teks",
+    category: "Image Creator",
+    path: "/imagecreator/bratvid?apikey=&text=",
+    async run(req, res) {
+      const { apikey, text } = req.query;
+
+      if (!apikey || !global.apikey.includes(apikey)) {
+        return res.status(403).json({
+          status: false,
+          error: "Apikey invalid"
+        });
+      }
+
+      if (!text || !text.trim()) {
+        return res.status(400).json({
+          status: false,
+          error: "Text parameter is required"
+        });
+      }
+
+      try {
+        const videoBuffer = await makeBratVid(text.trim());
+        
+        // Mengirimkan hasil langsung sebagai media video/mp4
+        res.setHeader('Content-Type', 'video/mp4');
+        return res.send(videoBuffer);
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          error: error.message || "Terjadi kesalahan pada server"
+        });
+      }
+    }
   }
-})();
-*/
+];
