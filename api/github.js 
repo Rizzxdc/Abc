@@ -6,7 +6,7 @@ const axios = require('axios');
  * @param {string} username
  */
 async function stalkGithub(username) {
-  const apiUrl = `https://api.azbry.com/api/stalk/github?username=${encodeURIComponent(username)}`;
+  const apiUrl = "https://api.azbry.com/api/stalk/github?username=" + encodeURIComponent(username);
 
   let response;
   try {
@@ -16,21 +16,20 @@ async function stalkGithub(username) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
         'Accept': 'application/json'
       },
-      validateStatus: () => true // Mencegah Axios melemparkan error otomatis saat HTTP status != 200
+      validateStatus: () => true
     });
   } catch (err) {
-    throw new Error(`Gagal menghubungi server GitHub stalker: ${err.message}`);
+    throw new Error('Gagal menghubungi server GitHub stalker: ' + err.message);
   }
 
   const data = response.data;
 
-  // Jika server mengembalikan HTML (misal kena Cloudflare / server down)
   if (!data || typeof data !== 'object') {
     throw new Error('Respon dari server tidak valid (bukan JSON). Server mungkin sedang down.');
   }
 
   if (response.status !== 200 || data.status === false) {
-    throw new Error(data.error || data.message || `Username "${username}" tidak ditemukan atau terjadi kesalahan pada server`);
+    throw new Error(data.error || data.message || 'Username "' + username + '" tidak ditemukan atau terjadi kesalahan pada server');
   }
 
   if (!data.result) {
@@ -54,7 +53,7 @@ async function stalkGithub(username) {
     following: typeof r.following === 'number' ? r.following : 0,
     createdAt: r.created_at || null,
     updatedAt: r.updated_at || null,
-    url: r.url || `https://github.com/${username}`
+    url: r.url || ("https://github.com/" + username)
   };
 }
 
@@ -67,7 +66,6 @@ module.exports = [
     async run(req, res) {
       const { apikey, username } = req.query;
 
-      // Check API Key global
       if (!apikey || !Array.isArray(global.apikey) || !global.apikey.includes(apikey)) {
         return res.status(403).json({
           status: false,
@@ -75,7 +73,6 @@ module.exports = [
         });
       }
 
-      // Check Parameter Username
       if (!username || !username.trim()) {
         return res.status(400).json({
           status: false,
