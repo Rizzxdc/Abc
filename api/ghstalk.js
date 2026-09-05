@@ -1,0 +1,97 @@
+const axios = require('axios');
+
+/**
+ * Stalk / cek profil akun GitHub berdasarkan username
+ * Source: https://api.azbry.com/api/stalk/github?username=
+ * @param {string} username
+ */
+async function stalkGithub(username) {
+  const apiUrl = "https://api.azbry.com/api/stalk/github?username=" + encodeURIComponent(username);
+
+  let response;
+  try {
+    response = await axios.get(apiUrl, {
+      timeout: 20000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'Accept': 'application/json'
+      },
+      validateStatus: () => true
+    });
+  } catch (err) {
+    throw new Error('Gagal menghubungi server GitHub stalker: ' + err.message);
+  }
+
+  const data = response.data;
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('Respon dari server tidak valid (bukan JSON). Server mungkin sedang down.');
+  }
+
+  if (response.status !== 200 || data.status === false) {
+    throw new Error(data.error || data.message || 'Username "' + username + '" tidak ditemukan atau terjadi kesalahan pada server');
+  }
+
+  if (!data.result) {
+    throw new Error('Data hasil tidak ditemukan pada respon server');
+  }
+
+  const r = data.result;
+
+  return {
+    username: r.username || username,
+    name: r.name ?? null,
+    avatar: r.avatar || null,
+    bio: r.bio ?? null,
+    company: r.company ?? null,
+    location: r.location ?? null,
+    blog: r.blog || "",
+    email: r.email ?? null,
+    publicRepos: typeof r.public_repos === 'number' ? r.public_repos : 0,
+    publicGists: typeof r.public_gists === 'number' ? r.public_gists : 0,
+    followers: typeof r.followers === 'number' ? r.followers : 0,
+    following: typeof r.following === 'number' ? r.following : 0,
+    createdAt: r.created_at || null,
+    updatedAt: r.updated_at || null,
+    url: r.url || ("https://github.com/" + username)
+  };
+}
+
+module.exports = [
+  {
+    name: "Stalk Github",
+    desc: "Cek / stalk profil akun GitHub berdasarkan username",
+    category: "Stalker",
+    path: "/stalk/github?apikey=&username=",
+    async run(req, res) {
+      const { apikey, username } = req.query;
+
+      if (!apikey || !Array.isArray(global.apikey) || !global.apikey.includes(apikey)) {
+        return res.status(403).json({
+          status: false,
+          error: "Apikey invalid"
+        });
+      }
+
+      if (!username || !username.trim()) {
+        return res.status(400).json({
+          status: false,
+          error: "Username is required"
+        });
+      }
+
+      try {
+        const result = await stalkGithub(username.trim());
+        return res.status(200).json({
+          status: true,
+          result
+        });
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          error: error.message || "Terjadi kesalahan pada server"
+        });
+      }
+    }
+  }
+];
