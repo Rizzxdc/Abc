@@ -136,7 +136,10 @@ function shakeEl(el) {
     el.classList.add('shake');
 }
 
-// Kalau sudah pernah login (ada token valid), langsung arahkan ke dashboard
+// Kalau sudah pernah login (ada token valid), langsung arahkan ke halaman tujuan
+const urlParams = new URLSearchParams(window.location.search);
+const redirectTarget = urlParams.get('redirect') || '/docs';
+
 (async function checkExistingSession() {
     const token = localStorage.getItem('auth_token');
     if (!token) return;
@@ -147,7 +150,7 @@ function shakeEl(el) {
             body: JSON.stringify({ token })
         });
         const data = await res.json();
-        if (data.status) window.location.href = '/docs';
+        if (data.status) window.location.href = redirectTarget;
     } catch (e) { /* diamkan, biarkan user login manual */ }
 })();
 
@@ -225,7 +228,7 @@ async function doLogin() {
         globalMsg.className = 'text-center text-sm font-bold mt-5 text-green-600';
         globalMsg.classList.remove('hidden');
 
-        setTimeout(() => { window.location.href = '/docs'; }, 700);
+        setTimeout(() => { window.location.href = redirectTarget; }, 700);
 
     } catch (err) {
         globalMsg.textContent = 'Gagal terhubung ke server. Coba lagi.';
