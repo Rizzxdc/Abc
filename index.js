@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const chalk = require('chalk');
 const fs = require('fs');
@@ -35,9 +36,9 @@ global.fetchJson = async (url, options = {}) => {
 };
 
 const settings = {
-  name: "AlwaysRizz Api's",
-  description: "AlwaysRizz Api is a simple and lightweight REST API built with Express.js",
-  apiSettings: { creator: "AlwaysRizz", apikey: ["Rizz"] },
+  name: "Skyzopedia Api's",
+  description: "Skyzopedia Api is a simple and lightweight REST API built with Express.js",
+  apiSettings: { creator: "Skyzopedia", apikey: ["key1", "key2", "123"] },
   linkWhatsapp: "https://whatsapp.com/channel/0029Vb7HGkP7j6g5lLi0JY0f",
   linkYoutube: "https://www.youtube.com/@skyzopedia-0xf"
 };
@@ -61,6 +62,16 @@ let rawEndpoints = {};
 
 const apiFolder = path.join(__dirname, './api');
 
+const SENSITIVE_LOG_FIELDS = ['password', 'pass', 'apikey', 'token', 'secret'];
+const redactBody = (body) => {
+  if (!body || typeof body !== 'object') return body;
+  const clone = { ...body };
+  for (const key of Object.keys(clone)) {
+    if (SENSITIVE_LOG_FIELDS.includes(key.toLowerCase())) clone[key] = '***redacted***';
+  }
+  return clone;
+};
+
 const register = (ep, file) => {
   if (ep && ep.name && ep.desc && ep.category && ep.path && typeof ep.run === "function") {
     const cleanPath = ep.path.split("?")[0];
@@ -68,7 +79,7 @@ const register = (ep, file) => {
     
     if (method === 'post') {
       app.post(cleanPath, upload.any(), (req, res, next) => {
-        console.log(`POST ${cleanPath} - Body:`, req.body);
+        console.log(`POST ${cleanPath} - Body:`, redactBody(req.body));
         console.log(`POST ${cleanPath} - Files:`, req.files);
         ep.run(req, res, next);
       });
@@ -135,6 +146,14 @@ app.get('/settings', (req, res) => {
 
 app.get('/docs', (req, res) => {
   res.sendFile(path.join(__dirname, 'src/docs.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'src/login.html'));
+});
+
+app.get('/register', (req, res) => {
+  res.sendFile(path.join(__dirname, 'src/register.html'));
 });
 
 app.get('/', (req, res) => {
