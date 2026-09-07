@@ -127,6 +127,16 @@
     </div>
     
     <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- User bar (muncul setelah auth check sukses) -->
+        <div id="userBar" class="hidden justify-end items-center gap-3 mb-3">
+            <span class="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+                <i class="fas fa-user-circle"></i> Halo, <span id="userNameDisplay">-</span>
+            </span>
+            <button id="logoutBtn" class="px-3 py-1.5 bg-white border-2 border-black rounded-full text-xs font-bold hover:bg-red-100 transition-colors shadow-[2px_2px_0px_#000]">
+                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+            </button>
+        </div>
+
         <!-- Header -->
         <header class="mb-4 slide-up">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
@@ -316,7 +326,73 @@
         'Canvas': 'bg-blue-500/20 text-blue-400', 'Auth': 'bg-yellow-500/20 text-yellow-600'
     };
 
-    document.addEventListener('DOMContentLoaded', function() { initializeApp(); });
+    function getAuthToken() { return localStorage.getItem('auth_token'); }
+
+    function goToLogin() {
+        const redirectTo = window.location.pathname + window.location.search;
+        window.location.href = '/login?redirect=' + encodeURIComponent(redirectTo);
+    }
+
+    function doLogout() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        window.location.href = '/login';
+    }
+
+    /**
+     * Wajib login untuk buka halaman ini.
+     * - Tidak ada token sama sekali -> langsung ke /login
+     * - Token ada tapi invalid/expired -> hapus token, ke /login
+     * - Token valid -> tampilkan badge user + tombol logout, lanjut load dashboard
+     * - Gagal konek ke server (bukan berarti belum login) -> tampilkan layar error, JANGAN paksa logout
+     */
+    async function requireAuthOrRedirect() {
+        const token = getAuthToken();
+        if (!token) {
+            goToLogin();
+            return false;
+        }
+
+        let data;
+        try {
+            const res = await fetch('/auth/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+            data = await res.json();
+        } catch (err) {
+            showErrorMessage('Gagal memeriksa status login. Periksa koneksi internet lalu coba lagi.');
+            return false;
+        }
+
+        if (!data || !data.status) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            goToLogin();
+            return false;
+        }
+
+        const userBar = document.getElementById('userBar');
+        const userNameDisplay = document.getElementById('userNameDisplay');
+        if (userBar && userNameDisplay) {
+            userNameDisplay.textContent = data.result.username || 'User';
+            userBar.classList.remove('hidden');
+            userBar.classList.add('flex');
+        }
+
+        return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        const ok = await requireAuthOrRedirect();
+        if (!ok) return;
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
+
+        initializeApp();
+    });
 
     async function initializeApp() {
         try {
