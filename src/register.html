@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar - Skyzopedia API</title>
+<meta name="theme-color" content="#F5EFDD">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+::-webkit-scrollbar { display: none }
+body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #F5EFDD;
+    letter-spacing: -0.4px;
+    color: #141414;
+    min-height: 100vh;
+}
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(0,0,0,.05) 1.5px, transparent 1.5px),
+        linear-gradient(90deg, rgba(0,0,0,.05) 1.5px, transparent 1.5px);
+    background-size: 40px 40px;
+    z-index: -1;
+}
+.nb-card { background:#fff; border:2px solid #000; box-shadow:5px 5px 0px #000; }
+.nb-input {
+    border: 2px solid #000; background:#fff; color:#000;
+    border-radius: 10px; padding: 12px 14px; width: 100%;
+    font-weight: 500; outline: none; transition: box-shadow .15s ease;
+}
+.nb-input:focus { box-shadow: 3px 3px 0px #000; }
+.nb-input.field-error { border-color:#dc2626; }
+.nb-btn {
+    border: 2px solid #000; box-shadow: 4px 4px 0px #000;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.nb-btn:active { transform: translate(3px,3px); box-shadow: 1px 1px 0px #000; }
+.nb-btn:disabled { opacity:.5; cursor:not-allowed; }
+.shake { animation: shake .35s; }
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+</style>
+</head>
+<body class="antialiased flex items-center justify-center px-6 py-14">
+
+<div class="w-full max-w-sm">
+
+    <div class="flex justify-center mb-6">
+        <span class="inline-block px-5 py-2 bg-emerald-400 text-black font-bold text-sm rounded-full border-2 border-black" style="box-shadow:3px 3px 0px #000">
+            Buat Akun Baru
+        </span>
+    </div>
+
+    <div class="nb-card rounded-2xl p-7" id="registerCard">
+        <h1 class="text-2xl font-extrabold mb-1">Daftar</h1>
+        <p class="text-sm text-gray-700 mb-6">Isi data di bawah untuk membuat akun.</p>
+
+        <label class="block text-sm font-bold mb-1">Username</label>
+        <input id="usernameInput" type="text" class="nb-input mb-1" placeholder="contoh: giyokpo" autocomplete="username">
+        <p id="usernameError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <label class="block text-sm font-bold mb-1">Gmail / Email</label>
+        <input id="emailInput" type="email" class="nb-input mb-1" placeholder="nama@gmail.com" autocomplete="email">
+        <p id="emailError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <label class="block text-sm font-bold mb-1">Password</label>
+        <div class="relative mb-1">
+            <input id="passwordInput" type="password" class="nb-input pr-11" placeholder="Minimal 6 karakter" autocomplete="new-password">
+            <button type="button" id="togglePw" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+        <p id="passwordError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <label class="block text-sm font-bold mb-1">Konfirmasi Password</label>
+        <input id="confirmInput" type="password" class="nb-input mb-1" placeholder="Ulangi password" autocomplete="new-password">
+        <p id="confirmError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <button id="registerBtn" class="nb-btn w-full mt-3 py-3 rounded-xl bg-yellow-300 font-bold hover:bg-yellow-200 flex items-center justify-center gap-2">
+            <span id="registerBtnText">Daftar Sekarang</span>
+            <i id="registerSpinner" class="fas fa-circle-notch fa-spin hidden"></i>
+        </button>
+
+        <p class="text-center text-sm text-gray-700 mt-5">
+            Sudah punya akun?
+            <a href="/login" class="font-bold text-black underline">Masuk</a>
+        </p>
+    </div>
+
+    <p id="globalMsg" class="text-center text-sm font-bold mt-5 hidden"></p>
+</div>
+
+<script>
+const usernameInput = document.getElementById('usernameInput');
+const emailInput    = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const confirmInput  = document.getElementById('confirmInput');
+
+const usernameError = document.getElementById('usernameError');
+const emailError    = document.getElementById('emailError');
+const passwordError = document.getElementById('passwordError');
+const confirmError  = document.getElementById('confirmError');
+const globalMsg      = document.getElementById('globalMsg');
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function shakeEl(el) {
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+}
+
+function setError(input, errEl, msg) {
+    if (msg) {
+        input.classList.add('field-error');
+        errEl.textContent = msg;
+        errEl.classList.remove('hidden');
+        shakeEl(input);
+        return false;
+    }
+    input.classList.remove('field-error');
+    errEl.classList.add('hidden');
+    return true;
+}
+
+document.getElementById('togglePw').addEventListener('click', () => {
+    const isPw = passwordInput.type === 'password';
+    passwordInput.type = isPw ? 'text' : 'password';
+    confirmInput.type = isPw ? 'text' : 'password';
+    document.querySelector('#togglePw i').className = isPw ? 'fas fa-eye-slash' : 'fas fa-eye';
+});
+
+function validateForm() {
+    const username = usernameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const confirm = confirmInput.value;
+
+    let ok = true;
+
+    if (!username) ok = setError(usernameInput, usernameError, 'Username wajib diisi') && ok;
+    else if (!USERNAME_REGEX.test(username)) ok = setError(usernameInput, usernameError, '3-20 karakter: huruf, angka, titik, underscore') && ok;
+    else setError(usernameInput, usernameError, null);
+
+    if (!email) ok = setError(emailInput, emailError, 'Email wajib diisi') && ok;
+    else if (!EMAIL_REGEX.test(email)) ok = setError(emailInput, emailError, 'Format email tidak valid') && ok;
+    else setError(emailInput, emailError, null);
+
+    if (!password) ok = setError(passwordInput, passwordError, 'Password wajib diisi') && ok;
+    else if (password.length < 6) ok = setError(passwordInput, passwordError, 'Password minimal 6 karakter') && ok;
+    else setError(passwordInput, passwordError, null);
+
+    if (!confirm) ok = setError(confirmInput, confirmError, 'Konfirmasi password wajib diisi') && ok;
+    else if (confirm !== password) ok = setError(confirmInput, confirmError, 'Konfirmasi password tidak sama') && ok;
+    else setError(confirmInput, confirmError, null);
+
+    return ok;
+}
+
+async function doRegister() {
+    globalMsg.classList.add('hidden');
+    if (!validateForm()) return;
+
+    const registerBtn = document.getElementById('registerBtn');
+    const registerBtnText = document.getElementById('registerBtnText');
+    const spinner = document.getElementById('registerSpinner');
+
+    registerBtn.disabled = true;
+    registerBtnText.textContent = 'Memproses...';
+    spinner.classList.remove('hidden');
+
+    try {
+        const res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: usernameInput.value.trim(),
+                email: emailInput.value.trim(),
+                password: passwordInput.value
+            })
+        });
+        const data = await res.json();
+
+        if (!data.status) {
+            globalMsg.textContent = data.error || 'Gagal mendaftar, coba lagi.';
+            globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
+            globalMsg.classList.remove('hidden');
+            return;
+        }
+
+        globalMsg.textContent = 'Akun berhasil dibuat! Mengarahkan ke halaman login...';
+        globalMsg.className = 'text-center text-sm font-bold mt-5 text-green-600';
+        globalMsg.classList.remove('hidden');
+
+        setTimeout(() => { window.location.href = '/login'; }, 1000);
+
+    } catch (err) {
+        globalMsg.textContent = 'Gagal terhubung ke server. Coba lagi.';
+        globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
+        globalMsg.classList.remove('hidden');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtnText.textContent = 'Daftar Sekarang';
+        spinner.classList.add('hidden');
+    }
+}
+
+document.getElementById('registerBtn').addEventListener('click', doRegister);
+[usernameInput, emailInput, passwordInput, confirmInput].forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+});
+</script>
+
+</body>
+</html>
