@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Skyzopedia API</title>
+<title>Daftar - Skyzopedia API</title>
 <meta name="theme-color" content="#F5EFDD">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,35 +58,43 @@ body::before {
 
     <div class="flex justify-center mb-6">
         <span class="inline-block px-5 py-2 bg-emerald-400 text-black font-bold text-sm rounded-full border-2 border-black" style="box-shadow:3px 3px 0px #000">
-            Masuk ke Akun
+            Buat Akun Baru
         </span>
     </div>
 
-    <div class="nb-card rounded-2xl p-7" id="loginCard">
-        <h1 class="text-2xl font-extrabold mb-1">Login</h1>
-        <p class="text-sm text-gray-700 mb-6">Masukkan username/Gmail dan password kamu.</p>
+    <div class="nb-card rounded-2xl p-7" id="registerCard">
+        <h1 class="text-2xl font-extrabold mb-1">Daftar</h1>
+        <p class="text-sm text-gray-700 mb-6">Isi data di bawah untuk membuat akun.</p>
 
-        <label class="block text-sm font-bold mb-1">Username / Gmail</label>
-        <input id="identifierInput" type="text" class="nb-input mb-1" placeholder="username atau nama@gmail.com" autocomplete="username">
-        <p id="identifierError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+        <label class="block text-sm font-bold mb-1">Username</label>
+        <input id="usernameInput" type="text" class="nb-input mb-1" placeholder="contoh: giyokpo" autocomplete="username">
+        <p id="usernameError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <label class="block text-sm font-bold mb-1">Gmail / Email</label>
+        <input id="emailInput" type="email" class="nb-input mb-1" placeholder="nama@gmail.com" autocomplete="email">
+        <p id="emailError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
 
         <label class="block text-sm font-bold mb-1">Password</label>
         <div class="relative mb-1">
-            <input id="passwordInput" type="password" class="nb-input pr-11" placeholder="Masukkan password" autocomplete="current-password">
+            <input id="passwordInput" type="password" class="nb-input pr-11" placeholder="Minimal 6 karakter" autocomplete="new-password">
             <button type="button" id="togglePw" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
                 <i class="fas fa-eye"></i>
             </button>
         </div>
         <p id="passwordError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
 
-        <button id="confirmBtn" class="nb-btn w-full mt-3 py-3 rounded-xl bg-yellow-300 font-bold hover:bg-yellow-200 flex items-center justify-center gap-2">
-            <span id="confirmBtnText">Konfirmasi &amp; Masuk</span>
-            <i id="confirmSpinner" class="fas fa-circle-notch fa-spin hidden"></i>
+        <label class="block text-sm font-bold mb-1">Konfirmasi Password</label>
+        <input id="confirmInput" type="password" class="nb-input mb-1" placeholder="Ulangi password" autocomplete="new-password">
+        <p id="confirmError" class="text-red-600 text-xs font-semibold mb-3 hidden"></p>
+
+        <button id="registerBtn" class="nb-btn w-full mt-3 py-3 rounded-xl bg-yellow-300 font-bold hover:bg-yellow-200 flex items-center justify-center gap-2">
+            <span id="registerBtnText">Daftar Sekarang</span>
+            <i id="registerSpinner" class="fas fa-circle-notch fa-spin hidden"></i>
         </button>
 
         <p class="text-center text-sm text-gray-700 mt-5">
-            Belum punya akun?
-            <a href="/register" class="font-bold text-black underline">Daftar</a>
+            Sudah punya akun?
+            <a href="/login" class="font-bold text-black underline">Masuk</a>
         </p>
     </div>
 
@@ -94,14 +102,19 @@ body::before {
 </div>
 
 <script>
-const identifierInput = document.getElementById('identifierInput');
-const identifierError = document.getElementById('identifierError');
-const passwordInput   = document.getElementById('passwordInput');
-const passwordError   = document.getElementById('passwordError');
-const globalMsg        = document.getElementById('globalMsg');
+const usernameInput = document.getElementById('usernameInput');
+const emailInput    = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const confirmInput  = document.getElementById('confirmInput');
 
-const urlParams = new URLSearchParams(window.location.search);
-const redirectTarget = urlParams.get('redirect') || '/docs';
+const usernameError = document.getElementById('usernameError');
+const emailError    = document.getElementById('emailError');
+const passwordError = document.getElementById('passwordError');
+const confirmError  = document.getElementById('confirmError');
+const globalMsg      = document.getElementById('globalMsg');
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function shakeEl(el) {
     el.classList.remove('shake');
@@ -122,88 +135,117 @@ function setError(input, errEl, msg) {
     return true;
 }
 
-// Kalau sudah pernah login (ada token valid), langsung arahkan ke halaman tujuan
-(async function checkExistingSession() {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-    try {
-        const res = await fetch('/auth/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token })
-        });
-        const data = await res.json();
-        if (data.status) window.location.href = redirectTarget;
-    } catch (e) { /* diamkan, biarkan user login manual */ }
-})();
-
 document.getElementById('togglePw').addEventListener('click', () => {
     const isPw = passwordInput.type === 'password';
     passwordInput.type = isPw ? 'text' : 'password';
+    confirmInput.type = isPw ? 'text' : 'password';
     document.querySelector('#togglePw i').className = isPw ? 'fas fa-eye-slash' : 'fas fa-eye';
 });
 
-async function doLogin() {
-    globalMsg.classList.add('hidden');
-
-    const identifier = identifierInput.value.trim();
+function validateForm() {
+    const username = usernameInput.value.trim();
+    const email = emailInput.value.trim();
     const password = passwordInput.value;
+    const confirm = confirmInput.value;
 
     let ok = true;
-    if (!identifier) ok = setError(identifierInput, identifierError, 'Username atau Gmail wajib diisi') && ok;
-    else setError(identifierInput, identifierError, null);
+
+    if (!username) ok = setError(usernameInput, usernameError, 'Username wajib diisi') && ok;
+    else if (!USERNAME_REGEX.test(username)) ok = setError(usernameInput, usernameError, '3-20 karakter: huruf, angka, titik, underscore') && ok;
+    else setError(usernameInput, usernameError, null);
+
+    if (!email) ok = setError(emailInput, emailError, 'Email wajib diisi') && ok;
+    else if (!EMAIL_REGEX.test(email)) ok = setError(emailInput, emailError, 'Format email tidak valid') && ok;
+    else setError(emailInput, emailError, null);
 
     if (!password) ok = setError(passwordInput, passwordError, 'Password wajib diisi') && ok;
+    else if (password.length < 6) ok = setError(passwordInput, passwordError, 'Password minimal 6 karakter') && ok;
     else setError(passwordInput, passwordError, null);
 
-    if (!ok) return;
+    if (!confirm) ok = setError(confirmInput, confirmError, 'Konfirmasi password wajib diisi') && ok;
+    else if (confirm !== password) ok = setError(confirmInput, confirmError, 'Konfirmasi password tidak sama') && ok;
+    else setError(confirmInput, confirmError, null);
 
-    const confirmBtn = document.getElementById('confirmBtn');
-    const confirmBtnText = document.getElementById('confirmBtnText');
-    const spinner = document.getElementById('confirmSpinner');
+    return ok;
+}
 
-    confirmBtn.disabled = true;
-    confirmBtnText.textContent = 'Memeriksa...';
+async function doRegister() {
+    globalMsg.classList.add('hidden');
+    if (!validateForm()) return;
+
+    const registerBtn = document.getElementById('registerBtn');
+    const registerBtnText = document.getElementById('registerBtnText');
+    const spinner = document.getElementById('registerSpinner');
+
+    registerBtn.disabled = true;
+    registerBtnText.textContent = 'Memproses...';
     spinner.classList.remove('hidden');
 
+    let res;
     try {
-        const res = await fetch('/auth/login', {
+        res = await fetch('/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, password })
+            body: JSON.stringify({
+                username: usernameInput.value.trim(),
+                email: emailInput.value.trim(),
+                password: passwordInput.value
+            })
         });
-        const data = await res.json();
+    } catch (err) {
+        // fetch gagal total: tidak ada internet, atau domain/endpoint tidak bisa dijangkau sama sekali
+        globalMsg.textContent = 'Tidak bisa menjangkau server. Periksa koneksi internet kamu.';
+        globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
+        globalMsg.classList.remove('hidden');
+        registerBtn.disabled = false;
+        registerBtnText.textContent = 'Daftar Sekarang';
+        spinner.classList.add('hidden');
+        return;
+    }
 
+    let data;
+    try {
+        data = await res.json();
+    } catch (err) {
+        // Server merespon tapi bukan JSON (kemungkinan besar: endpoint /auth/register
+        // belum ter-deploy di server ini, atau server error 500/404 balikin halaman HTML)
+        globalMsg.textContent = `Server merespon tidak valid (HTTP ${res.status}). Kemungkinan endpoint /auth/register belum ter-deploy di server ini.`;
+        globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
+        globalMsg.classList.remove('hidden');
+        registerBtn.disabled = false;
+        registerBtnText.textContent = 'Daftar Sekarang';
+        spinner.classList.add('hidden');
+        return;
+    }
+
+    try {
         if (!data.status) {
-            setError(passwordInput, passwordError, data.error || 'Username/email atau password salah');
-            passwordInput.value = '';
-            passwordInput.focus();
+            globalMsg.textContent = data.error || 'Gagal mendaftar, coba lagi.';
+            globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
+            globalMsg.classList.remove('hidden');
             return;
         }
 
-        localStorage.setItem('auth_token', data.result.token);
-        localStorage.setItem('auth_user', JSON.stringify(data.result.user));
-
-        globalMsg.textContent = 'Login berhasil! Mengarahkan...';
+        globalMsg.textContent = 'Akun berhasil dibuat! Mengarahkan ke halaman login...';
         globalMsg.className = 'text-center text-sm font-bold mt-5 text-green-600';
         globalMsg.classList.remove('hidden');
 
-        setTimeout(() => { window.location.href = redirectTarget; }, 700);
+        setTimeout(() => { window.location.href = '/login'; }, 1000);
 
     } catch (err) {
-        globalMsg.textContent = 'Gagal terhubung ke server. Coba lagi.';
+        globalMsg.textContent = 'Terjadi kesalahan tak terduga. Coba lagi.';
         globalMsg.className = 'text-center text-sm font-bold mt-5 text-red-600';
         globalMsg.classList.remove('hidden');
     } finally {
-        confirmBtn.disabled = false;
-        confirmBtnText.textContent = 'Konfirmasi & Masuk';
+        registerBtn.disabled = false;
+        registerBtnText.textContent = 'Daftar Sekarang';
         spinner.classList.add('hidden');
     }
 }
 
-document.getElementById('confirmBtn').addEventListener('click', doLogin);
-[identifierInput, passwordInput].forEach(el => {
-    el.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('registerBtn').addEventListener('click', doRegister);
+[usernameInput, emailInput, passwordInput, confirmInput].forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
 });
 </script>
 
