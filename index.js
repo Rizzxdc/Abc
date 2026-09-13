@@ -43,7 +43,8 @@ const settings = {
   linkYoutube: "https://www.youtube.com/@skyzopedia-0xf"
 };
 
-global.apikey = settings.apiSettings.apikey;
+global.apikey = [...settings.apiSettings.apikey];
+global.staticApikeys = [...settings.apiSettings.apikey]; // salinan tetap, dipakai apikeyGate.js buat bedain master key vs apikey per-user
 
 app.use((req, res, next) => {
   const originalJson = res.json;
@@ -72,20 +73,43 @@ const redactBody = (body) => {
   return clone;
 };
 
+// Kategori endpoint yang TIDAK pakai sistem apikey+limit (dia pakai token login sendiri)
+const NO_APIKEY_LIMIT_CATEGORIES = ['Auth', 'Account', 'Admin'];
+const { checkAndConsumeApikey } = require('./lib/apikeyGate');
+
 const register = (ep, file) => {
   if (ep && ep.name && ep.desc && ep.category && ep.path && typeof ep.run === "function") {
     const cleanPath = ep.path.split("?")[0];
     const method = ep.method ? ep.method.toLowerCase() : 'get';
-    
+    const needsApikeyGate = !NO_APIKEY_LIMIT_CATEGORIES.includes(ep.category);
+
     if (method === 'post') {
-      app.post(cleanPath, upload.any(), (req, res, next) => {
+      app.post(cleanPath, upload.any(), async (req, res, next) => {
         console.log(`POST ${cleanPath} - Body:`, redactBody(req.body));
         console.log(`POST ${cleanPath} - Files:`, req.files);
+
+        if (needsApikeyGate) {
+          const suppliedKey = (req.body && req.body.apikey) || req.query.apikey;
+          const gate = await checkAndConsumeApikey(suppliedKey);
+          if (!gate.ok) {
+            return res.status(gate.status || 403).json({ status: false, error: gate.error });
+          }
+        }
+
         ep.run(req, res, next);
       });
     } else {
-      app.get(cleanPath, (req, res, next) => {
+      app.get(cleanPath, async (req, res, next) => {
         console.log(`GET ${cleanPath} - Query:`, req.query);
+
+        if (needsApikeyGate) {
+          const suppliedKey = req.query.apikey;
+          const gate = await checkAndConsumeApikey(suppliedKey);
+          if (!gate.ok) {
+            return res.status(gate.status || 403).json({ status: false, error: gate.error });
+          }
+        }
+
         ep.run(req, res, next);
       });
     }
