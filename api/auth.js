@@ -1,6 +1,7 @@
 const { readDb, writeDb } = require('../lib/githubDb');
 const { hashPassword, verifyPassword } = require('../lib/password');
 const { createToken, verifyToken } = require('../lib/token');
+const { generateApiKey } = require('../lib/apikeyGen');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,20}$/;
@@ -70,11 +71,19 @@ module.exports = [
           });
         }
 
+        const DEFAULT_API_LIMIT = process.env.DEFAULT_API_LIMIT !== undefined
+          ? Number(process.env.DEFAULT_API_LIMIT)
+          : 50;
+
         const newUser = {
           id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
           username: String(username).trim(),
           email: String(email).trim(),
           password: hashPassword(String(password)),
+          role: 'user',
+          apikey: generateApiKey(users.map(u => u.apikey)),
+          apiLimit: Number.isFinite(DEFAULT_API_LIMIT) ? DEFAULT_API_LIMIT : 50,
+          apiUsed: 0,
           createdAt: new Date().toISOString()
         };
 
